@@ -44,7 +44,10 @@ log_init(char *path, log_info_t *handle)
 		return -1;
 	}
 
+	memset(handle->mmap_addr, 0, handle->file_len);
 	handle->offset = 0;
+	handle->item_size = ITEM_SIZE;
+	handle->write_idx = 0;
 	return 0;
 
 }
@@ -83,16 +86,59 @@ log_info(log_info_t *handle, char *content)
 {
 	/*snprintf() will cost more cyclecs, please use strlen() and memecpy instead */
 	int ret = 0;
+
 #ifdef MEMCPY
 	ret =  strlen(content);
 	memcpy((handle->mmap_addr + handle->offset), "[INFO]: ", sizeof("[INFO]: "));
-	memcpy((handle->mmap_addr + handle->offset), content, ret);
+	memcpy((handle->mmap_addr + handle->offset + sizeof("[INFO]: ")), content, ret);
 	handle->offset = (ret +sizeof("[INFO]: "));
 #else 	
 	ret = snprintf((handle->mmap_addr + handle->offset), (handle->file_len - handle->offset),"[INFO]: %s\n",content);
 	handle->offset +=  ret;
 #endif 
 
+}
+
+
+
+void
+atomic_log_info(log_info_t *handle, char *content)
+{
+	/*snprintf() will cost more cyclecs, please use strlen() and memecpy instead */
+	int ret = 0;
+	unsigned int local_offset = 0 , cur_idx = 0;
+	static int info_len = sizeof("[INFO]: ");
+	cur_idx = 1 + __atomic_fetch_add(&handle->write_idx, 1, __ATOMIC_RELEASE);
+	local_offset += (cur_idx * handle->item_size);
+
+#ifdef MEMCPY
+	ret =  strlen(content);
+	memcpy((handle->mmap_addr + local_offset), "[INFO]: ", info_len);
+	memcpy((handle->mmap_addr + local_offset + info_len), content, ret);
+#else 	
+	ret = snprintf((handle->mmap_addr + handle->offset), (handle->file_len - handle->offset),"[INFO]: %s\n",content);
+#endif 
+
+}
+
+void
+atomic_log_error(log_info_t *handle, char *content)
+{
+	/*snprintf() will cost more cyclecs, please use strlen() and memecpy instead */
+	int ret = 0;
+	/* use atomic and local var avoid multiple thread */
+	unsigned int local_offset = 0, cur_idx = 0;
+	static int error_len = sizeof("[ERROR]: ");
+	cur_idx = 1 + __atomic_fetch_add(&handle->write_idx, 1, __ATOMIC_RELEASE);
+	local_offset += (cur_idx * handle->item_size);
+
+#ifdef MEMCPY
+	ret =  strlen(content);
+	memcpy((handle->mmap_addr + local_offset), "[ERROR]: ", error_len);
+	memcpy((handle->mmap_addr + local_offset + error_len), content, ret);
+#else 	
+	ret = snprintf((handle->mmap_addr + local_offset), (handle->file_len - handle->offset),"[ERROR]: %s\n",content);
+#endif 
 
 }
 
@@ -103,7 +149,7 @@ log_error(log_info_t *handle, char *content)
 #ifdef MEMCPY
 	ret =  strlen(content);
 	memcpy((handle->mmap_addr + handle->offset), "[ERROR]: ", sizeof("[ERROR]: "));
-	memcpy((handle->mmap_addr + handle->offset), content, ret);
+	memcpy((handle->mmap_addr + handle->offset + sizeof("[ERROR]: ")), content, ret);
 	handle->offset =  (ret + sizeof("[ERROR]: "));
 #else 
 	ret = snprintf((handle->mmap_addr + handle->offset), (handle->file_len - handle->offset),"[ERROR]: %s\n",content);

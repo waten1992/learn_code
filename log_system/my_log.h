@@ -4,6 +4,10 @@
 ** Description: 
 **			1- simple log file system for signal thread use
 ** 			2- use INFO an ERROR level info
+**
+**Update: 2016-08-23	
+**			1- use gcc atomic lock unique write_idx adapt to multipul thread  	
+**
 */
 
 
@@ -14,11 +18,14 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#define ITEM_SIZE  (96)
 
 
 typedef struct log_info
 {
 	int 			fd;	
+	unsigned int 	item_size;
+	unsigned int 	write_idx; /* only lock this element */
 	char 			*mmap_addr;
 	unsigned int 	file_len;
 	unsigned int 	offset;
