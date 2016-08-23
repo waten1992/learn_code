@@ -76,9 +76,9 @@ log_destory(log_info_t *handle)
 
 /*if you want more fast speed write memory, then you need special format write memory
 * like struct {
-	char 	data[128];	
-}
-*
+*	char 	data[128];	
+* }
+* 
 */
 
 void
@@ -99,7 +99,7 @@ log_info(log_info_t *handle, char *content)
 
 }
 
-
+/*if you want more fast , you need define special format assigned value */
 
 void
 atomic_log_info(log_info_t *handle, char *content)
@@ -134,6 +134,15 @@ atomic_log_error(log_info_t *handle, char *content)
 
 #ifdef MEMCPY
 	ret =  strlen(content);
+	if( ret < (ITEM_SIZE - ret) )
+	{
+		printf("[ERROR]: FILE:%s ,LINE:%d, FUNC:%s \n",
+				__FILE__,
+				__LINE__,
+				__FUNCTION__);
+		/* truncate over length */
+		ret = ITEM_SIZE - ret;
+	}
 	memcpy((handle->mmap_addr + local_offset), "[ERROR]: ", error_len);
 	memcpy((handle->mmap_addr + local_offset + error_len), content, ret);
 #else 	
@@ -149,6 +158,14 @@ log_error(log_info_t *handle, char *content)
 #ifdef MEMCPY
 	ret =  strlen(content);
 	if( ret < (ITEM_SIZE - ret) )
+	{
+		printf("[ERROR]: FILE:%s ,LINE:%d, FUNC:%s \n",
+				__FILE__,
+				__LINE__,
+				__FUNCTION__);
+		/* truncate over length */
+		ret = ITEM_SIZE - ret;
+	}
 	memcpy((handle->mmap_addr + handle->offset), "[ERROR]: ", sizeof("[ERROR]: "));
 	memcpy((handle->mmap_addr + handle->offset + sizeof("[ERROR]: ")), content, ret);
 	handle->offset =  (ret + sizeof("[ERROR]: "));
