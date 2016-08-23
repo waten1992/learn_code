@@ -148,6 +148,7 @@ log_error(log_info_t *handle, char *content)
 	int ret = 0;
 #ifdef MEMCPY
 	ret =  strlen(content);
+	if( ret < (ITEM_SIZE - ret) )
 	memcpy((handle->mmap_addr + handle->offset), "[ERROR]: ", sizeof("[ERROR]: "));
 	memcpy((handle->mmap_addr + handle->offset + sizeof("[ERROR]: ")), content, ret);
 	handle->offset =  (ret + sizeof("[ERROR]: "));
@@ -155,7 +156,19 @@ log_error(log_info_t *handle, char *content)
 	ret = snprintf((handle->mmap_addr + handle->offset), (handle->file_len - handle->offset),"[ERROR]: %s\n",content);
 	handle->offset +=  ret;
 #endif	
-	
-
 }
 
+void
+flush_log_to_disk(log_info_t *handle)
+{
+	/*synchronize a file with a memory map*/
+	int ret = 0;
+	ret = msync(handle->mmap_addr, (handle->write_idx*handle->item_size), MS_ASYNC);
+	if (ret != 0) {
+		printf("[ERROR]: FILE:%s ,LINE:%d, FUNC:%s, reason: %s\n",
+				__FILE__,
+				__LINE__,
+				__FUNCTION__,
+				strerror(errno));
+	} 
+}

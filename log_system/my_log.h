@@ -43,5 +43,14 @@ log_info(log_info_t *handle, char *content);
 void 
 log_error(log_info_t *handle, char *content);
 
+void
+atomic_log_info(log_info_t *handle, char *content);
+
+void
+atomic_log_error(log_info_t *handle, char *content);
+
+void
+flush_log_to_disk(log_info_t *handle);
+
 int 
 log_destory(log_info_t *handle);

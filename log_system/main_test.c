@@ -13,7 +13,7 @@ hanle_log_thread(void *argv)
 	log_info_t *handle = (log_info_t *)(argv);
 	atomic_log_info(handle, "multiple thread call info! \n");
 	atomic_log_error(handle, "multiple thread call error! \n");
-	
+	flush_log_to_disk(handle);
 	return NULL;
 }
 
