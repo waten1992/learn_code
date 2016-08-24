@@ -8,6 +8,12 @@
 #define MAX_SYMBOL_LEN  (16)
 #define MAX_SYM_IDX  	(256)
 #define MAX_SYM_SIZE	(1<<24)
+#define TIMESTAMP_LEN	(8)
+#define TYPE_LEN 		(2)
+#define TEST_SYM_IDX	(1)
+#define PRIME_NUM  		(253) 
+
+/*for speed use hash instead of travel compare */
 
 typedef struct binary_header{
 	unsigned short 	type;
@@ -17,16 +23,18 @@ typedef struct binary_header{
 
 
 typedef struct quote_struct {
-	char				symbol[16];
+	unsigned int		hash_key;/*calcluate by symbol*/
 	char 				*mmap_addr;
+	unsigned int 		cur_write_offset;
+	unsigned int 		file_len;
 	int 				fd;
-	binary_header_t 	quote_head;
+	quote_struct_t 		*next;
 }quote_struct_t;
 
 typedef struct split_node
 {
 	quote_struct_t 		node_ar[MAX_SYM_IDX];
-	unsigned int 		node_idx;
+	quote_struct_t 		orginal_node;
 }split_node_t;
 
 
