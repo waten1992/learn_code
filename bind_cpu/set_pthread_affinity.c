@@ -14,12 +14,12 @@ pthread_bind_cpu(unsigned int cpu_no)
 	CPU_ZERO(&cpuset);
 
 	if(CPU_ISSET(cpu_no, &cpuset)) {
-		printf("cpu_no:%d was set affinity !\n", cpu_no);
+		printf("[ERROR-SET-AFFINITY] cpu_no:%d was set affinity !\n", cpu_no);
 		return -1;	
 	} 
 
 	CPU_SET(cpu_no, &cpuset);
-	ret = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+	ret = pthread_setaffinity_np(ptd_id, sizeof(cpu_set_t), &cpuset);
 	if (ret != 0) {
 		printf("[ERROR-SET-AFFINITY] FILE:%s ,LINE:%d, FUNC:%s \n",
 			__FILE__,
