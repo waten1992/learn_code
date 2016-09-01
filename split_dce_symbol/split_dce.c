@@ -1,12 +1,9 @@
 #include "split_dce.h"
+#include "c_quote_dce_my.h"
+#include "mi_type.h"
 
 static binary_header_t  s_g_binary_common_head_info;
 
-void
-set_log_file_len(log_info_t *handle, unsigned int buf_size)
-{
-	handle->file_len = buf_size;
-}
 
 void 
 set_binary_common_head(binary_header_t *original_info)
@@ -19,8 +16,8 @@ get_binary_common_head(char *addr)
 {
 	binary_header_t *set_head = (binary_header_t *)(addr);
 	
-	set_head->type = s_g_binary_common_head_info->type;
-	set_head->type_len = s_g_binary_common_head_info->type_len;
+	set_head->type = s_g_binary_common_head_info.type;
+	set_head->type_len = s_g_binary_common_head_info.type_len;
 }
 
 unsigned short 
@@ -39,22 +36,30 @@ get_quote_type()
 void 
 update_binary_offset(quote_struct_t *quote_file)
 {
-	quote->cur_write_offset += get_quote_type_len();
+	quote_file->cur_write_offset += get_quote_type_len();
 }
 
 void 
 update_binary_symbol_cnt(quote_struct_t *quote_file)
 {
-	quote_file->mmap_addr = *(unsigned int *)(quote_file->mmap_addr) + 1;
+	*(unsigned int *)quote_file->mmap_addr = *(unsigned int *)(quote_file->mmap_addr) + 1;
+}
+
+char *
+get_current_quote_addr(quote_struct_t *quote)
+{
+	return (quote->mmap_addr + quote->cur_write_offset);
 }
 
 void
 cp_quote_struct_and_update(quote_struct_t *quote_file)
 {
 	/* copy orginal file info to new file */
+	char 	*cur_addr;
+	unsigned short type_len;
 	cur_addr = get_current_quote_addr(quote_file);
 	type_len = get_quote_type_len();
-	strncpy(cur_addr, quote, type_len);
+	strncpy(cur_addr, (char *)quote_file, type_len);
 	
 	update_binary_offset(quote_file);
 	update_binary_symbol_cnt(quote_file);
@@ -80,7 +85,7 @@ split_create(quote_struct_t *quote_file, char *symbol, char *quote)
 	strncpy(quote_file->symbol, symbol, sizeof(quote_file->symbol));
 	get_binary_common_head(quote_file->mmap_addr);
 
-	cp_quote_struct_and_update(quote_file)
+	cp_quote_struct_and_update(quote_file);
 	
 	return 0;
 }
@@ -132,11 +137,11 @@ parser_quote_header(split_node_t *node , char *quote_path, binary_header_t *bina
 {
 	int idx = 0;
 	
-	node->orginal_node.fd = open(path, O_RDWR);
+	node->orginal_node.fd = open(quote_path, O_RDWR);
 	if (-1 == node->orginal_node.fd) 
 	{  
 		printf("[ERROR] :open(%s) got error, reason: %s! FILE:%s ,LINE:%d, FUNC:%s\n", 
-				path,
+				quote_path,
 				strerror(errno),
 				__FILE__,
 				__LINE__,
@@ -147,7 +152,7 @@ parser_quote_header(split_node_t *node , char *quote_path, binary_header_t *bina
 	
 	node->orginal_node.file_len = lseek(node->orginal_node.fd, 0, SEEK_END);
 	
-	node->orginal_node.mmap_addr= mmap(NULL, node->orginal_node.file_len, PROT_READ | PROT_WRITE, MAP_SHARED, handle->fd, 0);
+	node->orginal_node.mmap_addr= mmap(NULL, node->orginal_node.file_len, PROT_READ | PROT_WRITE, MAP_SHARED, node->orginal_node.fd, 0);
 	if (MAP_FAILED == node->orginal_node.mmap_addr)
 	{
 		close(node->orginal_node.fd);
@@ -165,32 +170,6 @@ parser_quote_header(split_node_t *node , char *quote_path, binary_header_t *bina
 	return 0;
 }
 
-char *
-get_symbol(quote_struct_t *quote)
-{
-	switch(quote->quote_head.type) {
-		case MI_DCE_BEST_DEEP: 
-		{
-			break;
-		}
-		case  MI_DCE_MARCH_PRICE: 
-		{
-			break;
-		}
-		case MI_DCE_ORDER_STATISTIC:
-		{
-			break;
-		}
-		case MI_DCE_REALTIME_PRICE:
-		{
-			break;
-		}
-		case MI_DCE_TEN_ENTRUST: 
-		{
-			break;
-		}
-	}
-}
 
 unsigned int 
 calculate_hash_key(char *symbol)
@@ -215,7 +194,7 @@ get_hash_table_idx(unsigned int hash_key)
 }
 
 static unsigned int 
-get_best_and_deep(char  *quote, char *symbol)
+get_best_and_deep_hash_key(char  *quote, char *symbol)
 {
 	unsigned int hash_key = 0;
 	char *tmp = ((struct dce_my_best_deep_quote *)(quote + TIMESTAMP_LEN))->Contract;
@@ -227,6 +206,35 @@ get_best_and_deep(char  *quote, char *symbol)
 	return get_hash_table_idx(hash_key);
 }
 
+static unsigned int 
+get_march_price_hash_key(char  *quote, char *symbol)
+{
+
+	return 0;
+}
+
+static unsigned int 
+get_order_statistic_hash_key(char  *quote, char *symbol)
+{
+
+	return 0;
+}
+
+static unsigned int 
+get_realtime_price_hash_key(char  *quote, char *symbol)
+{
+
+	return 0;
+}
+
+static unsigned int 
+get_ten_entrust_hash_key(char  *quote, char *symbol)
+{
+
+	return 0;
+}
+
+
 typedef unsigned int(*process_quote_symbol_t) (char  *quote, char *symbol);
 
 static process_quote_symbol_t calculate_symbol_func_ar[] = 
@@ -237,13 +245,8 @@ static process_quote_symbol_t calculate_symbol_func_ar[] =
 	get_order_statistic_hash_key,
 	get_realtime_price_hash_key,
 	get_ten_entrust_hash_key,
-}
+};
 
-char *
-get_current_quote_addr(quote_struct_t *quote)
-{
-	return (quote->mmap_addr + quote->cur_write_offset);
-}
 
 int 
 split_init(char *quote_path, split_node_t *node)
@@ -269,18 +272,18 @@ split_init(char *quote_path, split_node_t *node)
 	orginal_file = &node->orginal_node;
 
 
-	set_binary_common_head(binary_head_info);
+	set_binary_common_head(&binary_head_info);
 
 	/* scanning original binary file */
-	for (idx = 0; i < binary_head_info->sym_cnt; idx++) {
+	for (idx = 0; idx < binary_head_info.sym_cnt; idx++) {
 
 		current_addr = get_current_quote_addr(orginal_file);
 		
-		hash_idx = calculate_symbol_func_ar[binary_info->type](current_addr, symbol);
+		hash_idx = calculate_symbol_func_ar[binary_head_info.type](current_addr, symbol);
 		if (node->node_ar[hash_idx].mmap_addr == NULL) {
-			split_create(node->node_ar[hash_idx], symbol, current_addr);
+			split_create(&node->node_ar[hash_idx], symbol, current_addr);
 		} else {
-			split_append(node->node_ar[hash_idx], symbol, current_addr);
+			split_append(&node->node_ar[hash_idx], symbol, current_addr);
 		}
 
 
@@ -293,7 +296,7 @@ int
 orginal_binary_destory(quote_struct_t *quote)
 {
 	int ret = 0;
-	if (quote->mmmap_addr) {
+	if (quote->mmap_addr) {
 		msync(quote->mmap_addr, quote->file_len, MS_ASYNC);
 		
 		ret = munmap(quote->mmap_addr, quote->file_len);
@@ -347,7 +350,7 @@ flush_data_to_disk(quote_struct_t *quote)
 int 
 split_destory(split_node_t *node)
 {
-	int ret = 0;
+	int ret = 0, idx = 0;
 	/*the first destory original binary file*/
 	quote_struct_t  	*orginal_file, *node_ar;
 	orginal_file = &node->orginal_node;
@@ -361,9 +364,9 @@ split_destory(split_node_t *node)
 					__FUNCTION__);
 	}
 
-	for (int idx = 0; idx < MAX_SYM_IDX; idx++) {
+	for (idx = 0; idx < MAX_SYM_IDX; idx++) {
 		if(node_ar[idx].mmap_addr != NULL) {
-			ret = flush_data_to_disk(node_ar[idx]);
+			ret = flush_data_to_disk(&node_ar[idx]);
 			if (ret != 0) {
 				printf("[ERROR]: FILE:%s ,LINE:%d, FUNC:%s got error\n",
 					__FILE__,

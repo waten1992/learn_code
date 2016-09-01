@@ -16,6 +16,7 @@
 #define TEST_SYM_IDX	(1)
 #define PRIME_NUM  		(253) 
 #define BINARY_HEAD_CNT (8)
+#define FLUSH_NAME_LEN  (64)
 
 /*for speed use hash instead of travel compare */
 
@@ -35,7 +36,7 @@ typedef struct quote_struct
 	unsigned int 		cur_write_offset;
 	unsigned int 		file_len;
 	int 				fd;
-	quote_struct_t 		*next;
+	struct quote_struct	*next;
 }quote_struct_t;
 
 typedef struct split_node
