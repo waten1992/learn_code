@@ -52,15 +52,15 @@ get_current_quote_addr(quote_struct_t *quote)
 }
 
 void
-cp_quote_struct_and_update(quote_struct_t *quote_file)
+cp_quote_struct_and_update(quote_struct_t *quote_file, char *quote)
 {
 	/* copy orginal file info to new file */
 	char 	*cur_addr;
 	unsigned short type_len;
 	cur_addr = get_current_quote_addr(quote_file);
 	type_len = get_quote_type_len();
-	strncpy(cur_addr, (char *)quote_file, type_len);
-	
+	memcpy(cur_addr, quote, type_len);
+
 	update_binary_offset(quote_file);
 	update_binary_symbol_cnt(quote_file);
 }
@@ -85,7 +85,7 @@ split_create(quote_struct_t *quote_file, char *symbol, char *quote)
 	strncpy(quote_file->symbol, symbol, sizeof(quote_file->symbol));
 	get_binary_common_head(quote_file->mmap_addr);
 
-	cp_quote_struct_and_update(quote_file);
+	cp_quote_struct_and_update(quote_file, quote);
 	
 	return 0;
 }
@@ -123,9 +123,9 @@ split_append(quote_struct_t *quote_file, char *symbol, char *quote)
 			return -1;
 		}
 		tmp_p->next = new_quote_node;
-		cp_quote_struct_and_update(new_quote_node);
+		cp_quote_struct_and_update(new_quote_node, quote);
 	}else {
-		cp_quote_struct_and_update(tmp_p);		
+		cp_quote_struct_and_update(tmp_p, quote);		
 	} 
 	
 	return 0;
@@ -240,6 +240,7 @@ typedef unsigned int(*process_quote_symbol_t) (char  *quote, char *symbol);
 static process_quote_symbol_t calculate_symbol_func_ar[] = 
 {
 	NULL,
+	NULL,
 	get_best_and_deep_hash_key,
 	get_march_price_hash_key,
 	get_order_statistic_hash_key,
@@ -286,7 +287,7 @@ split_init(char *quote_path, split_node_t *node)
 			split_append(&node->node_ar[hash_idx], symbol, current_addr);
 		}
 
-
+		update_binary_offset(orginal_file);
 	}
 
 	return 0;
@@ -318,7 +319,7 @@ orginal_binary_destory(quote_struct_t *quote)
 int 
 flush_data_to_disk(quote_struct_t *quote)
 {
-	char *quote_type_name[] = { NULL, "_best_and_deep", "_match_price", "_order_statistic", "_realtime_price", "_ten_entrust"};
+	char *quote_type_name[] = { NULL, NULL,"_best_and_deep", "_match_price", "_order_statistic", "_realtime_price", "_ten_entrust"};
 	char quote_name_path[FLUSH_NAME_LEN];
 	unsigned short type = get_quote_type();
 	FILE *fd;
