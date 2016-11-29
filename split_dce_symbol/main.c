@@ -6,7 +6,7 @@ main(int argc, char const *argv[])
 	int ret = 0;
 	char *path;
 	split_node_t node;
-	path = argv[1];
+	path = (char *)argv[1];
 
 	if (argc != 2) {
 		printf("Please input like: ./execute_able original_file \n");

@@ -129,7 +129,25 @@ check_quote_time(char *quote, int type)
 	return quote_time;
 }
 
+void 
+judge_over_curr_mem(quote_struct_t *quote_file, char *quote, int type_len)
+{
+	char *cp;
 
+	if ((quote_file->cur_write_offset + type_len) >= MAX_SYM_SIZE) {
+		cp = calloc(1, MAX_SYM_SIZE<<1);
+		if(cp == NULL) {
+			printf("[ERROR]-[MEMORY]-[FAIL] FILE:%s ,LINE:%d, FUNC:%s \n",
+				__FILE__,
+				__LINE__,
+				__FUNCTION__);
+		}
+
+		memcpy(cp, quote_file->mmap_addr, quote_file->cur_write_offset);
+		free(quote_file->mmap_addr);
+		quote_file->mmap_addr = cp;	
+	}
+}
 
 void
 cp_quote_struct_and_update(quote_struct_t *quote_file, char *quote)
@@ -139,7 +157,6 @@ cp_quote_struct_and_update(quote_struct_t *quote_file, char *quote)
 	unsigned short type_len;
 	unsigned int type, ret = 1, gentime = 0;
 
-	cur_addr = get_current_quote_addr(quote_file);
 	type_len = get_quote_type_len();
 	type = get_quote_type();
 	if (type == DCE_MDBESTANDDEEP_QUOTE_TYPE || type == DCE_MDTENENTRUST_QUOTE_TYPE || type == DCE_ARBI_QUOTE_TYPE) {
@@ -151,6 +168,8 @@ cp_quote_struct_and_update(quote_struct_t *quote_file, char *quote)
 	}
 
 	if (ret) {
+		judge_over_curr_mem(quote_file, quote, type_len);
+		cur_addr = get_current_quote_addr(quote_file);
 		memcpy(cur_addr, quote, type_len);
 		update_binary_offset(quote_file);
 		update_binary_symbol_cnt(quote_file);
@@ -445,7 +464,15 @@ split_init(char *quote_path, split_node_t *node)
 				__FUNCTION__);
 			return -1;
 		}
-
+#if 0	
+		static unsigned long debug_idx= 0;
+		if (strncmp(symbol,"c1701", 5) == 0){
+			debug_idx++;
+			if (debug_idx == 52440) {
+				printf("stop here ! \n");
+			}	
+		}
+#endif 		
 		if (node->node_ar[hash_idx].mmap_addr == NULL) {
 			split_create(&node->node_ar[hash_idx], symbol, current_addr);
 		} else {

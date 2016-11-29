@@ -10,7 +10,7 @@
 
 #define MAX_SYMBOL_LEN  (16)
 #define MAX_SYM_IDX  	(256)
-#define MAX_SYM_SIZE	(20<<20)
+#define MAX_SYM_SIZE	(30<<20)
 #define TIMESTAMP_LEN	(8)
 #define TYPE_LEN 		(6)
 #define TEST_SYM_IDX	(1)
